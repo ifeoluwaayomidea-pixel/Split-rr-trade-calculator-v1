@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Split RR">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Split RR Trade Calculator</title>
+<style>
+:root{--bg:#0b1220;--card:#121c2e;--card2:#18243a;--text:#eef4ff;--muted:#9fb0c9;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--border:#263651}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+.container{max-width:1100px;margin:auto;padding:18px}.header{padding:18px 0 10px}.header h1{margin:0;font-size:28px}.header p{color:var(--muted);margin:7px 0 0}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 8px 25px #0002}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.value{font-size:24px;font-weight:800;margin-top:6px}
+.section{margin-top:16px}.section h2{font-size:18px;margin:0 0 12px}
+.form{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.field input,.field select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#0d1728;color:var(--text);font-size:15px;outline:none}.field input:focus,.field select:focus{border-color:var(--accent)}
+.results{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.result{background:var(--card2);padding:13px;border-radius:12px}.result strong{display:block;font-size:18px;margin-top:4px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;color:white;background:var(--accent)}.btn.secondary{background:#263651}.btn.green{background:#15803d}.btn.red{background:#b91c1c}.btn.yellow{background:#b45309}.btn:active{transform:scale(.98)}
+.note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px}.table{width:100%;border-collapse:collapse;min-width:900px}.table th,.table td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-size:12px}.table th{color:var(--muted);background:#0e1829;position:sticky;top:0}.win{color:var(--green);font-weight:800}.loss{color:var(--red);font-weight:800}.be{color:var(--yellow);font-weight:800}.partial{color:#60a5fa;font-weight:800}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}.stat{padding:13px;background:var(--card2);border-radius:12px}.stat .n{font-size:20px;font-weight:800;margin-top:4px}
+.empty{text-align:center;color:var(--muted);padding:28px}
+.footer{color:var(--muted);font-size:11px;text-align:center;padding:22px}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.form{grid-template-columns:repeat(2,1fr)}.results{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.container{padding:12px}.header h1{font-size:23px}.grid,.form,.results,.stats{grid-template-columns:1fr 1fr}.form .field:first-child{grid-column:1/-1}.value{font-size:19px}.btn{width:100%}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Split RR Trade Calculator</h1>
+    <p>Dynamic risk management for any asset or currency pair. One setup, two positions, one combined trade outcome.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="label">Current Balance</div><div class="value" id="dashBalance">₦0.00</div></div>
+    <div class="card"><div class="label">Total Trades</div><div class="value" id="dashTrades">0</div></div>
+    <div class="card"><div class="label">Win Rate</div><div class="value" id="dashWinRate">0%</div></div>
+    <div class="card"><div class="label">Net P/L</div><div class="value" id="dashNet">₦0.00</div></div>
+  </div>
+
+  <div class="section card">
+    <h2>New Trade Setup</h2>
+    <div class="form">
+      <div class="field"><label>Asset / Pair</label><input id="asset" placeholder="e.g. XAU/USD, EUR/USD, BTC/USDT"></div>
+      <div class="field"><label>Account Currency</label>
+        <select id="currency">
+          <option value="NGN">₦ — Nigerian Naira (NGN)</option>
+          <option value="USD">$ — US Dollar (USD)</option>
+          <option value="EUR">€ — Euro (EUR)</option>
+          <option value="GBP">£ — British Pound (GBP)</option>
+          <option value="JPY">¥ — Japanese Yen (JPY)</option>
+          <option value="CAD">C$ — Canadian Dollar (CAD)</option>
+          <option value="AUD">A$ — Australian Dollar (AUD)</option>
+        </select>
+      </div>
+      <div class="field"><label>Current Balance</label><input id="balance" type="number" min="0" step="0.01" placeholder="10000"></div>
+      <div class="field"><label>Risk %</label><input id="riskPct" type="number" min="0" max="100" step="0.1" value="10"></div>
+      <div class="field"><label>TP1 RR</label><input id="rr1" type="number" min="0" step="0.1" value="2"></div>
+      <div class="field"><label>TP2 RR</label><input id="rr2" type="number" min="0" step="0.1" value="4"></div>
+    </div>
+
+    <div class="results">
+      <div class="result"><span class="label">Total Risk</span><strong id="totalRisk">₦0.00</strong></div>
+      <div class="result"><span class="label">TP1 Risk (50%)</span><strong id="risk1">₦0.00</strong></div>
+      <div class="result"><span class="label">TP2 Risk (50%)</span><strong id="risk2">₦0.00</strong></div>
+      <div class="result"><span class="label">Full Win Profit</span><strong id="fullWin">₦0.00</strong></div>
+      <div class="result"><span class="label">Loss</span><strong id="fullLoss">-₦0.00</strong></div>
+      <div class="result"><span class="label">Partial Win Profit</span><strong id="partialWin">₦0.00</strong></div>
+      <div class="result"><span class="label">Balance After Full Win</span><strong id="afterWin">₦0.00</strong></div>
+      <div class="result"><span class="label">Balance After Loss</span><strong id="afterLoss">₦0.00</strong></div>
+    </div>
+
+    <div class="note">
+      <b>Outcome logic:</b> WIN = TP1 and TP2 both hit. LOSS = stop loss is hit before TP1. BREAK-EVEN = TP1 was reached, then the setup reverses and closes at your defined break-even point. PARTIAL WIN = TP1 hits but TP2 does not and the remaining position is stopped.
+    </div>
+
+    <div class="actions">
+      <button class="btn green" onclick="recordTrade('WIN')">Record WIN</button>
+      <button class="btn red" onclick="recordTrade('LOSS')">Record LOSS</button>
+      <button class="btn yellow" onclick="recordTrade('BREAK-EVEN')">Record BREAK-EVEN</button>
+      <button class="btn" onclick="recordTrade('PARTIAL WIN')">Record PARTIAL WIN</button>
+      <button class="btn secondary" onclick="setBalanceFromHistory()">Use Current Balance</button>
+    </div>
+  </div>
+
+  <div class="section card">
+    <h2>Performance Dashboard</h2>
+    <div class="stats">
+      <div class="stat"><div class="label">Wins</div><div class="n" id="wins">0</div></div>
+      <div class="stat"><div class="label">Losses</div><div class="n" id="losses">0</div></div>
+      <div class="stat"><div class="label">Break-even</div><div class="n" id="bes">0</div></div>
+      <div class="stat"><div class="label">Partial Wins</div><div class="n" id="partials">0</div></div>
+      <div class="stat"><div class="label">Total Profit</div><div class="n" id="profits">₦0.00</div></div>
+      <div class="stat"><div class="label">Total Loss</div><div class="n" id="lossTotal">₦0.00</div></div>
+      <div class="stat"><div class="label">Profit Factor</div><div class="n" id="pf">0.00</div></div>
+      <div class="stat"><div class="label">Best Trade</div><div class="n" id="best">₦0.00</div></div>
+      <div class="stat"><div class="label">Worst Trade</div><div class="n" id="worst">₦0.00</div></div>
+      <div class="stat"><div class="label">Average P/L</div><div class="n" id="avg">₦0.00</div></div>
+      <div class="stat"><div class="label">Max Drawdown</div><div class="n" id="dd">₦0.00</div></div>
+      <div class="stat"><div class="label">Total Return</div><div class="n" id="returnPct">0%</div></div>
+    </div>
+  </div>
+
+  <div class="section card">
+    <h2>Trade History</h2>
+    <div class="actions">
+      <button class="btn" onclick="downloadCSV()">Download CSV History</button>
+      <button class="btn secondary" onclick="downloadJSON()">Download Backup (JSON)</button>
+      <button class="btn red" onclick="clearHistory()">Clear History</button>
+    </div>
+    <div class="table-wrap" style="margin-top:12px">
+      <table class="table">
+        <thead><tr><th>#</th><th>Date</th><th>Asset / Pair</th><th>Currency</th><th>Balance Before</th><th>Total Risk</th><th>TP1 RR</th><th>TP2 RR</th><th>Outcome</th><th>P/L</th><th>Balance After</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">Your trade history is stored locally in this browser. Export your CSV regularly as a backup.</div>
+</div>
+
+<script>
+const KEY='splitRRTradeHistoryV1';
+let history=JSON.parse(localStorage.getItem(KEY)||'[]');
+
+const $=id=>document.getElementById(id);
+const currencyMeta={NGN:{symbol:'₦',locale:'en-NG'},USD:{symbol:'$',locale:'en-US'},EUR:{symbol:'€',locale:'de-DE'},GBP:{symbol:'£',locale:'en-GB'},JPY:{symbol:'¥',locale:'ja-JP'},CAD:{symbol:'C$',locale:'en-CA'},AUD:{symbol:'A$',locale:'en-AU'}};
+const money=n=>{const c=currencyMeta[$('currency')?.value||'NGN']||currencyMeta.NGN;return c.symbol+Number(n||0).toLocaleString(c.locale,{minimumFractionDigits:2,maximumFractionDigits:2});};
+const num=id=>Number($(id).value)||0;
+
+function calc(){
+  const b=num('balance'), r=num('riskPct')/100, rr1=num('rr1'), rr2=num('rr2');
+  const risk=b*r, half=risk/2;
+  $('totalRisk').textContent=money(risk);
+  $('risk1').textContent=money(half);
+  $('risk2').textContent=money(half);
+  $('fullWin').textContent=money(half*rr1+half*rr2);
+  $('fullLoss').textContent='-'+money(risk);
+  $('partialWin').textContent=money(half*rr1-half);
+  $('afterWin').textContent=money(b+half*rr1+half*rr2);
+  $('afterLoss').textContent=money(b-risk);
+  $('dashBalance').textContent=money(b);
+}
+['balance','riskPct','rr1','rr2'].forEach(id=>$(id).addEventListener('input',calc));$('currency').addEventListener('change',calc);
+
+function recordTrade(outcome){
+  const asset=$('asset').value.trim()||'—', b=num('balance'), riskPct=num('riskPct')/100, rr1=num('rr1'), rr2=num('rr2');
+  if(b<=0){alert('Enter a valid current balance first.');return}
+  const totalRisk=b*riskPct, half=totalRisk/2;
+  let pnl=0;
+  if(outcome==='WIN') pnl=half*rr1+half*rr2;
+  if(outcome==='LOSS') pnl=-totalRisk;
+  if(outcome==='BREAK-EVEN') pnl=0;
+  if(outcome==='PARTIAL WIN') pnl=half*rr1-half;
+  const after=b+pnl;
+  history.push({id:history.length+1,date:new Date().toLocaleString('en-NG'),currency:$('currency').value,asset,balanceBefore:b,totalRisk,tp1RR:rr1,tp2RR:rr2,outcome,pnl,balanceAfter:after});
+  localStorage.setItem(KEY,JSON.stringify(history));
+  $('balance').value=after.toFixed(2);
+  render();
+  calc();
+}
+
+function render(){
+  const body=$('historyBody');
+  body.innerHTML=history.length?history.map((t,i)=>`<tr>
+  <td>${i+1}</td><td>${t.date}</td><td>${escapeHtml(t.asset)}</td><td>${t.currency||"NGN"}</td><td>${money(t.balanceBefore)}</td><td>${money(t.totalRisk)}</td><td>${t.tp1RR}R</td><td>${t.tp2RR}R</td>
+  <td class="${t.outcome==='WIN'?'win':t.outcome==='LOSS'?'loss':t.outcome==='BREAK-EVEN'?'be':'partial'}">${t.outcome}</td>
+  <td class="${t.pnl>0?'win':t.pnl<0?'loss':''}">${t.pnl>0?'+':''}${money(t.pnl)}</td><td>${money(t.balanceAfter)}</td></tr>`).join(''):`<tr><td colspan="11" class="empty">No trades recorded yet.</td></tr>`;
+  const wins=history.filter(x=>x.outcome==='WIN').length, losses=history.filter(x=>x.outcome==='LOSS').length, bes=history.filter(x=>x.outcome==='BREAK-EVEN').length, partials=history.filter(x=>x.outcome==='PARTIAL WIN').length;
+  const profits=history.filter(x=>x.pnl>0).reduce((a,x)=>a+x.pnl,0), lossTotal=Math.abs(history.filter(x=>x.pnl<0).reduce((a,x)=>a+x.pnl,0));
+  const pnls=history.map(x=>x.pnl), best=pnls.length?Math.max(...pnls):0, worst=pnls.length?Math.min(...pnls):0, avg=pnls.length?pnls.reduce((a,b)=>a+b,0)/pnls.length:0;
+  const pf=lossTotal?profits/lossTotal:profits?Infinity:0;
+  const start=history.length?history[0].balanceBefore:0, current=history.length?history[history.length-1].balanceAfter:num('balance');
+  let peak=start, maxDD=0; history.forEach(t=>{peak=Math.max(peak,t.balanceAfter);maxDD=Math.max(maxDD,peak-t.balanceAfter)});
+  $('dashTrades').textContent=history.length;$('dashWinRate').textContent=history.length?((wins/history.length)*100).toFixed(1)+'%':'0%';$('dashNet').textContent=money(current-start);
+  $('wins').textContent=wins;$('losses').textContent=losses;$('bes').textContent=bes;$('partials').textContent=partials;
+  $('profits').textContent=money(profits);$('lossTotal').textContent=money(lossTotal);$('pf').textContent=pf===Infinity?'∞':pf.toFixed(2);
+  $('best').textContent=money(best);$('worst').textContent=money(worst);$('avg').textContent=money(avg);$('dd').textContent=money(maxDD);
+  $('returnPct').textContent=start?(((current-start)/start)*100).toFixed(2)+'%':'0%';
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function setBalanceFromHistory(){if(history.length){$('balance').value=history[history.length-1].balanceAfter.toFixed(2);calc()}else alert('No recorded trade history yet.')}
+function clearHistory(){if(confirm('Delete all trade history? This cannot be undone.')){history=[];localStorage.removeItem(KEY);render();calc()}}
+function downloadCSV(){
+ if(!history.length){alert('No trade history to download.');return}
+ const headers=['#','Date','Asset / Pair','Currency','Balance Before','Total Risk','TP1 RR','TP2 RR','Outcome','P/L','Balance After'];
+ const rows=history.map((t,i)=>[i+1,t.date,t.asset,t.currency||'NGN',t.balanceBefore,t.totalRisk,t.tp1RR,t.tp2RR,t.outcome,t.pnl,t.balanceAfter]);
+ const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\\n');
+ downloadBlob(csv,'split-rr-trade-history.csv','text/csv;charset=utf-8');
+}
+function downloadJSON(){if(!history.length){alert('No trade history to download.');return}downloadBlob(JSON.stringify(history,null,2),'split-rr-trade-history-backup.json','application/json')}
+function downloadBlob(content,name,type){const blob=new Blob([content],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+render();calc();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+}
+</script>
+</body>
+</html>
